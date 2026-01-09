@@ -1,0 +1,101 @@
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    ansiColor('xterm')
+    disableConcurrentBuilds()
+  }
+
+  environment {
+    APP_NAME = 'devops-demo-app'
+    IMAGE_TAG = "${env.BUILD_NUMBER}"
+    REGISTRY = 'localhost' // později quay.io / ghcr.io / ECR
+  }
+
+  stages {
+
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Install dependencies') {
+      steps {
+        sh 'npm ci'
+      }
+    }
+
+    stage('Quality checks') {
+      parallel {
+        stage('Lint') {
+          steps {
+            sh 'npm run lint || true'
+          }
+        }
+        stage('Tests') {
+          steps {
+            sh 'npm test || true'
+          }
+        }
+      }
+    }
+
+    stage('Build (TypeScript)') {
+      steps {
+        sh 'npm run build'
+      }
+    }
+
+    stage('Podman Build') {
+      steps {
+        sh """
+          podman build \
+            -t ${REGISTRY}/${APP_NAME}:${IMAGE_TAG} \
+            -t ${REGISTRY}/${APP_NAME}:latest \
+            .
+        """
+      }
+    }
+
+    stage('Image Scan (optional)') {
+      steps {
+        echo '🔍 Placeholder for Trivy / Grype'
+      }
+    }
+
+    stage('Push Image') {
+      when {
+        branch 'main'
+      }
+      steps {
+        echo '📦 Push stage – připraveno'
+        // podman login ${REGISTRY}
+        // podman push ${REGISTRY}/${APP_NAME}:${IMAGE_TAG}
+      }
+    }
+
+    stage('Deploy') {
+      when {
+        branch 'main'
+      }
+      steps {
+        echo '🚀 Deploy placeholder'
+        // kubectl apply -f k8s/
+      }
+    }
+  }
+
+  post {
+    success {
+      echo '✅ Pipeline SUCCESS'
+    }
+    failure {
+      echo '❌ Pipeline FAILED'
+    }
+    always {
+      cleanWs()
+    }
+  }
+}
