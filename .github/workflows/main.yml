@@ -8,4 +8,6 @@ jobs:
     steps:
       - name: Print message
         run: echo "Hello, GitHub Actions!"
+      - name: Print second message
+        run: echo "02 - Hello, GitHub Actions!"
         
